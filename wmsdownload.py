@@ -8,7 +8,6 @@ import os
 import tempfile
 import glob
 import textwrap
-import struct
 
 from osgeo import gdal
 from osgeo import osr
@@ -17,7 +16,6 @@ from osgeo import ogr
 from owslib.wms import WebMapService
 
 import argparse as ap
-import numpy as np
 
 
 class WmsDataset(object):
@@ -92,7 +90,8 @@ class WmsDataset(object):
             self.download_raster(layer, **kwargs)
             if outfile is not None:
                 self.merge_tiles(outfile, overwrite=overwrite)
-                #self.merge_tiles(outfile, overwrite=overwrite, reclass=reclass)
+                #self.merge_tiles(outfile, overwrite=overwrite,
+                #                 reclass=reclass)
         elif data_format == 'vector':
             return self.download_vector(layer, **kwargs)
 
@@ -330,8 +329,8 @@ class WmsDataset(object):
                     target_band = target_file.GetRasterBand(band + 1)
                     source_data = \
                         source_band.ReadRaster(0, 0, x_size, y_size,
-                                                x_size, y_size,
-                                                target_band.DataType)
+                                               x_size, y_size,
+                                               target_band.DataType)
                     target_band.WriteRaster(x_off, y_off, x_size, y_size,
                                             source_data, x_size, y_size,
                                             target_band.DataType)
@@ -382,8 +381,7 @@ def commandline_parser():
 use. Be aware that some WMS services have licensing restrictions which prohibit
 downloading the data for offline use.
 
-Written by Philipp Meier <philipp.meier@eawag.ch>
-(c) Copyright 2014, EAWAG, Kastanienbaum, Switzerland.
+(c) Copyright 2014, Philipp Meier <philipp@diemeiers.ch>
         """, formatter_class=ap.RawDescriptionHelpFormatter)
     parser.add_argument('-u', '--url',
                         help='URL of the WMS server.')
