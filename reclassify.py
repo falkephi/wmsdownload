@@ -18,8 +18,10 @@ class RGBlayer(object):
         self.outfile = None
         self.inputdata = None
         self.outputdata = None
+        self.progress = gdal.TermProgress_nocb
 
     def load(self, filename):
+        print "Loading file ..."
         filename = os.path.expanduser(filename)
         self.infile = gdal.Open(filename)
         if self.infile is not None:
@@ -39,6 +41,7 @@ class RGBlayer(object):
                 'File exists! Please choose a different file name.')
 
     def save(self, outfile, overwrite=False):
+        print "Saving data ..."
         if self.outputdata is not None:
             self.outfile = os.path.expanduser(outfile)
             self.check_outfile(self.outfile, overwrite=overwrite)
@@ -47,8 +50,8 @@ class RGBlayer(object):
 
             driver = gdal.GetDriverByName('GTiff')
             target_file = driver.Create(self.outfile,
-                                        int(self.x_npix),
-                                        int(self.y_npix),
+                                        self.x_size,
+                                        self.y_size,
                                         1, gdal.GDT_UInt32)
             target_file.SetGeoTransform(self.geotransform)
             target_file.SetProjection(self.proj)
@@ -60,8 +63,10 @@ class RGBlayer(object):
                                     write_band, self.x_size, self.y_size,
                                     gdal.GDT_UInt32)
 
-    def reclassify(self):
+    def reclassify(self, n):
 
+        print "Classify ..."
+        self.progress(0.0)
         # Create unique values from all bands
         sumband = self.inputdata[0, :, :].flatten()
         for band in range(1, self.bands):
@@ -69,11 +74,30 @@ class RGBlayer(object):
                 * 256 ** band
         # Retrieve unique values and map them to integer values
         unique_values = np.unique(sumband)
-        mapping_values = range(len(unique_values))
+        frequencies = []
         for i, val in enumerate(unique_values):
-            # replace val in sumband with mapping_values[i]
-            sumband[sumband == val] = mapping_values[i]
-        self.outputdata = tuple(sumband)
+            # Get frequency of each value
+            frequencies.append((i, len(sumband[sumband == i])))
+            self.progress(float(i) / len(unique_values))
+        frequencies.sort(key=lambda tup: tup[1], reverse=True)
+        # The first n most frequent classes are the classes we need:
+        pixclasses = frequencies[0:n]
+        print pixclasses
+        classified = np.zeros(sumband.shape)
+        for pixclass, freq in pixclasses:
+            classified[sumband == pixclass] = pixclass
+        frequencies.sort(key=lambda tup: tup[1], reverse=True)
+        # The first n most frequent classes are the classes we need:
+        pixclasses = frequencies[0:n]
+        print pixclasses
+        classified = np.zeros(sumband.shape)
+        for pixclass, freq in pixclasses:
+            classified[sumband == pixclass] = pixclass
+        # Now it's time to handle ambiguous cases
+        # will be added later
+
+        self.outputdata = tuple(classified)
+        self.progress(1.0)
 
 
 def commandline_parser():
@@ -89,8 +113,11 @@ GeoTIFF with unique classes."
                         help='File to which data will be saved.')
     parser.add_argument('-x', '--overwrite', action='store_true',
                         help='Overwrite existing file.')
+    parser.add_argument('-c', '--classes',
+                        help='Number of classes.')
 
     return parser
+
 
 if __name__ == '__main__':
     parser = commandline_parser()
@@ -100,5 +127,5 @@ if __name__ == '__main__':
     # Throw an error if file exists before heavy lifting is done
     layer.check_outfile(args.output_file, overwrite=args.overwrite)
     layer.load(args.input_file)
-    layer.reclassify()
+    layer.reclassify(int(args.classes))
     layer.save(args.output_file, overwrite=args.overwrite)
