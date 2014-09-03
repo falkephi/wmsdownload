@@ -95,7 +95,8 @@ class WmsDataset(object):
         elif data_format == 'vector':
             return self.download_vector(layer, **kwargs)
 
-    def download_raster(self, layer, resolution=1, nx=None, ny=None):
+    def download_raster(self, layer, resolution=1, nx=None, ny=None,
+                        boundingbox=None):
         #                reclass=False):
         """Download a raster dataset by downloading different tiles and merging
         them. Reclassify unique RGB value if necessary."""
@@ -110,8 +111,12 @@ class WmsDataset(object):
             self.ny = int(ny)
         # calculate the number and bounds of the tiles to download
         self.resolution = resolution
-        self.boundingbox = self.layers[layer].boundingBox
-        self.boundingbox = reproject_boundingbox(self.boundingbox, self.proj)
+        if boundingbox is None:
+            self.boundingbox = self.layers[layer].boundingBox
+            self.boundingbox = reproject_boundingbox(self.boundingbox,
+                                                     self.proj)
+        else:
+            self.boundingbox = boundingbox
         minx = self.boundingbox[0]
         miny = self.boundingbox[1]
         maxx = self.boundingbox[2]
@@ -409,6 +414,10 @@ downloading the data for offline use.
                         help='''Set the projection of the output file as
                         EPSG code (e.g. WGS84 --> EPSG:4326; CH1903/LV09 -->
                         EPSG:21781).''')
+    parser.add_argument('-bb', '--boundingbox',
+                        help='''Specify the area of interest for downloading
+                        data. Format: minx,miny,maxx,maxy (no spaces between
+                        numbers and comma!).''')
     #parser.add_argument('-c', '--reclassify', action='store_true',
     #                    help='''Reclassify unique RGB values to integer
     #                    classes [1, 2, ..., z].''')
@@ -450,12 +459,19 @@ if __name__ == '__main__':
         if args.projection is not None:
             dd.set_projection(args.projection)
 
+        if args.boundingbox is not None:
+            boundingbox = \
+                tuple([float(i) for i in args.boundingbox.split(',')])
+        else:
+            boundingbox = None
+
         try:
             dd.download_data(layer,
                              data_format=data_format,
                              resolution=res,
                              output=args.output,
-                             overwrite=args.overwrite)
+                             overwrite=args.overwrite,
+                             boundingbox=boundingbox)
                              #reclass=reclassify)
         except KeyboardInterrupt:
             print "\nCaught keyboard interrupt."

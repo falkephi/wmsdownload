@@ -39,6 +39,11 @@ python wmsdownload.py [-h] -u URL [-l LAYER [-f DATA_FORMAT]
                         Set the projection of the output file as EPSG code
                         (e.g. WGS84 --> EPSG:4326; CH1903/LV09 -->
                         EPSG:21781).
+  -bb BOUNDINGBOX, --boundingbox BOUNDINGBOX
+                        Specify the area of interest for downloading data.
+                        Format: minx,miny,maxx,maxy (no spaces between numbers
+                        and comma!).
+
 ```
 
 LICENSE

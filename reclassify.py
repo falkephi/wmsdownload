@@ -36,16 +36,18 @@ class RGBlayer(object):
 
     def check_outfile(self, outfile, overwrite=False):
         outfile = os.path.expanduser(outfile)
-        if os.path.exists(outfile) and overwrite is False:
+        exists = os.path.exists(outfile)
+        if exists and not overwrite:
             raise IOError(
                 'File exists! Please choose a different file name.')
+        return exists
 
     def save(self, outfile, overwrite=False):
         print "Saving data ..."
         if self.outputdata is not None:
             self.outfile = os.path.expanduser(outfile)
-            self.check_outfile(self.outfile, overwrite=overwrite)
-            if overwrite:
+            exists = self.check_outfile(self.outfile, overwrite=overwrite)
+            if exists and overwrite:
                 os.remove(outfile)
 
             driver = gdal.GetDriverByName('GTiff')
@@ -66,44 +68,31 @@ class RGBlayer(object):
     def reclassify(self, n):
 
         print "Classify ..."
-        self.progress(0.0)
         # Create unique values from all bands
         sumband = self.inputdata[0, :, :].flatten()
         for band in range(1, self.bands):
             sumband = sumband + self.inputdata[band, :, :].flatten() \
                 * 256 ** band
         # Retrieve unique values and map them to integer values
-        unique_values = np.unique(sumband)
-        frequencies = []
-        for i, val in enumerate(unique_values):
-            # Get frequency of each value
-            frequencies.append((i, len(sumband[sumband == i])))
-            self.progress(float(i) / len(unique_values))
+        unique_values, idx = np.unique(sumband, return_inverse=True)
+        count = np.bincount(idx)
+        frequencies = zip(unique_values, count)
         frequencies.sort(key=lambda tup: tup[1], reverse=True)
         # The first n most frequent classes are the classes we need:
         pixclasses = frequencies[0:n]
-        print pixclasses
-        classified = np.zeros(sumband.shape)
-        for pixclass, freq in pixclasses:
-            classified[sumband == pixclass] = pixclass
-        frequencies.sort(key=lambda tup: tup[1], reverse=True)
-        # The first n most frequent classes are the classes we need:
-        pixclasses = frequencies[0:n]
-        print pixclasses
-        classified = np.zeros(sumband.shape)
-        for pixclass, freq in pixclasses:
-            classified[sumband == pixclass] = pixclass
+        classified = np.zeros(sumband.shape, np.uint8)
+        for i, pixclass in enumerate(pixclasses):
+            classified[sumband == pixclass[0]] = i
         # Now it's time to handle ambiguous cases
         # will be added later
 
         self.outputdata = tuple(classified)
-        self.progress(1.0)
 
 
 def commandline_parser():
     parser = ap.ArgumentParser(
         description="""Reclassify a multiband GeoTIFF into a single band
-GeoTIFF with unique classes."
+GeoTIFF with unique classes.
 
 (c) Copyright 2014, Philipp Meier <philipp@diemeiers.ch>
         """, formatter_class=ap.RawDescriptionHelpFormatter)
