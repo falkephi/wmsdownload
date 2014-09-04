@@ -113,11 +113,11 @@ class RGBlayer(object):
             it = 0
             for val, count in frequencies[n:]:
                 mask = sumband == val
-                r = red[mask][0]
-                g = green[mask][0]
-                b = blue[mask][0]
+                r = float(red[mask][0]) / 255
+                g = float(green[mask][0]) / 255
+                b = float(blue[mask][0]) / 255
                 H, S, V = RGBtoHSV(r, g, b)
-                old_match = 1000
+                old_match = 280
                 match_idx = -1
                 for i in img_class_colors.keys():
                     match = get_color_proximity((H, S, V),
@@ -157,8 +157,8 @@ def RGBtoHSV(r, g, b):
 
 def get_color_proximity(color1, color2):
     diff1 = min(abs(color1[0] - color2[0]), abs(360 - color2[0] + color1[0]))
-    diff2 = abs(color1[1] - color2[1]) * 50
-    diff3 = abs(color1[2] - color2[2]) * 50
+    diff2 = abs(color1[1] - color2[1]) * 10
+    diff3 = abs(color1[2] - color2[2]) * 10
 
     return diff1 + diff2 + diff3
 
